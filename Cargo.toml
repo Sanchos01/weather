@@ -1,0 +1,26 @@
+[package]
+name = "weather"
+version = "0.1.0"
+authors = ["sanch"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+actix-web = "3.1.0"
+actix-rt = "1.1.1"
+tokio = { version = "0.3.0", features = ["macros", "rt-multi-thread", "sync", "time", "test-util"]}
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+futures = "0.3"
+futures-util = "0.3"
+futures-task = "0.3"
+log = "0.4.0"
+env_logger = "0.8"
+reqwest = { version = "0.10", features = ["json"]}
+lazy_static = "1.4.0"
+url = "2.2"
+
+[dev-dependencies]
+pretty_assertions = "0.4.0"
+mockito = "0.28"
