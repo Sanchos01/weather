@@ -40,7 +40,7 @@ async fn test_day_error() {
   let body = resp.take_body();
   let body = body.as_ref().unwrap();
   assert!(resp.status().is_client_error());
-  let json = json!({"details":"day can't be more than 5"});
+  let json = json!({"kind":"Client","message":"day can't be more than 5"});
   assert_eq!(body, &Body::from(json));
 }
 
