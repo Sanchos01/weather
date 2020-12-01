@@ -43,47 +43,53 @@ pub async fn get_forecast(city: String) -> Result<Forecast, RequestError> {
 }
 
 // Кастомная ошибка
-#[derive(Serialize)]
+#[derive(Serialize, Debug)]
 pub struct RequestError {
+  kind: RequestErrorType,
+  message: String,
+  #[serde(skip_serializing)]
   details: String,
 }
 
+#[derive(Debug, Serialize)]
+pub enum RequestErrorType {
+  Request,
+  Decode,
+  Client,
+}
+
 impl RequestError {
-  pub fn new(details: String) -> Self {
-    Self { details }
+  pub fn new<T: std::fmt::Debug>(kind: RequestErrorType, message: String, data: T) -> Self {
+    Self {
+      kind,
+      message,
+      details: format!("{:?}", data),
+    }
   }
 }
 
 impl std::fmt::Display for RequestError {
   fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-    write!(f, "Request error: {}", self.details)
+    write!(f, "{} error: {}", self.kind, self.message)
   }
 }
 
-impl std::fmt::Debug for RequestError {
+impl std::fmt::Display for RequestErrorType {
   fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-    write!(
-      f,
-      "Request error {{ file: {}, line: {}, details: {} }}",
-      file!(),
-      line!(),
-      self.details
-    )
+    write!(f, "{:?}", self)
   }
 }
 
 impl std::convert::From<reqwest::Error> for RequestError {
   fn from(error: reqwest::Error) -> Self {
-    RequestError {
-      details: format!("Request error: {:?}", error),
-    }
+    let msg = "Request error to outer api";
+    RequestError::new(RequestErrorType::Request, msg.into(), error)
   }
 }
 
 impl std::convert::From<url::ParseError> for RequestError {
   fn from(error: url::ParseError) -> Self {
-    RequestError {
-      details: format!("Parse url error: {:?}", error),
-    }
+    let msg = "Parse url error";
+    RequestError::new(RequestErrorType::Request, msg.into(), error)
   }
 }

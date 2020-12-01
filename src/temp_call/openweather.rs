@@ -1,7 +1,6 @@
-use super::{Forecast, GetTemperature, RequestError, Temperature};
+use super::{Forecast, GetTemperature, RequestError, RequestErrorType, Temperature};
 use crate::{HTTP_CLIENT, OPENWEATHER_APIKEY};
 use futures::Future;
-use log::warn;
 use serde::Deserialize;
 use std::pin::Pin;
 
@@ -11,17 +10,17 @@ use mockito;
 #[derive(Default)]
 pub struct Call();
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 struct DayResponse {
   main: DayResponseMain,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 struct ForecastResponse {
   list: Vec<DayResponse>,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 struct DayResponseMain {
   temp: Temperature,
 }
@@ -40,7 +39,9 @@ impl GetTemperature for Call {
       let url = reqwest::Url::parse(raw.as_str())?;
       let response = HTTP_CLIENT.get(url).send().await?;
       if response.status() != reqwest::StatusCode::OK {
-        return Err(log_response_error(response, "forecast").await);
+        let msg = "Openweather api error";
+        let error = RequestError::new(RequestErrorType::Request, msg.into(), response);
+        return Err(error);
       }
       let body = response.json::<ForecastResponse>().await?;
       if let Some(temp) = body
@@ -52,9 +53,9 @@ impl GetTemperature for Call {
       {
         Ok(temp)
       } else {
-        Err(RequestError {
-          details: "openweather response error".to_string(),
-        })
+        let msg = "Openweather response error";
+        let error = RequestError::new(RequestErrorType::Decode, msg.into(), body);
+        Err(error)
       }
     };
     Box::pin(func)
@@ -70,7 +71,10 @@ impl GetTemperature for Call {
       let url = reqwest::Url::parse(raw.as_str())?;
       let response = HTTP_CLIENT.get(url).send().await?;
       if response.status() != reqwest::StatusCode::OK {
-        return Err(log_response_error(response, "forecast").await);
+        let msg = "Openweather api error";
+        let error = RequestError::new(RequestErrorType::Request, msg.to_string(), response);
+        return Err(error);
+        // return Err(log_response_error(response, "forecast").await);
       }
       let body = response.json::<ForecastResponse>().await?;
       let (temps, count) = body
@@ -88,9 +92,9 @@ impl GetTemperature for Call {
           temps[0].0, temps[1].0, temps[2].0, temps[3].0, temps[4].0,
         ))
       } else {
-        Err(RequestError {
-          details: "not enought data in openweather forecast".to_string(),
-        })
+        let msg = "Not enought data in openweather forecast";
+        let error = RequestError::new(RequestErrorType::Decode, msg.into(), body);
+        Err(error)
       }
     };
     Box::pin(func)
@@ -104,16 +108,4 @@ fn host() -> String {
 #[cfg(test)]
 fn host() -> String {
   mockito::server_url()
-}
-
-async fn log_response_error(response: reqwest::Response, fun_name: &str) -> RequestError {
-  warn!(
-    "openweather {:?} request error {{ status: {:?}, body: {:?} }}",
-    fun_name,
-    response.status(),
-    response.text().await.unwrap()
-  );
-  RequestError {
-    details: "openweather api error".to_string(),
-  }
 }
